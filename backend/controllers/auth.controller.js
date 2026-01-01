@@ -1,7 +1,7 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js";
-import { sendVerificationEmail } from "../mailtrap/emails.js";
+import { sendVerificationEmail, sendWelcomeEmail } from "../mailtrap/emails.js";
 
 export const signup = async (req, res) => {
   const { email, password, name } = req.body;
@@ -48,10 +48,56 @@ export const signup = async (req, res) => {
   }
 };
 
+export const verifyEmail = async (req, res) => {
+  const { email, token } = req.body;
+  try {
+    const userExists = await User.findOne({ email });
+    if (!userExists) {
+      return res.status(400).json({
+        success: false,
+        message: "There is no user with the email you provided",
+      });
+    }
+    if (
+      token !== userExists.verificationToken ||
+      Date.now() > userExists.verificationTokenExpiresAt
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "The verification code you have provided is invalid or expired",
+      });
+    }
+    userExists.isVerified = true;
+    userExists.verificationToken = undefined;
+    userExists.verificationTokenExpiresAt = undefined;
+    // Update the user in the database
+    await userExists.save();
+    // Send the welcome email
+    await sendWelcomeEmail(userExists.email, userExists.name);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      user: {
+        ...userExists._doc,
+        password: undefined,
+      },
+    });
+  } catch (error) {
+    console.log("Failed to verify the email with error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server error. Please try again later",
+    });
+  }
+};
+
 export const login = async (req, res) => {
   res.send("login route");
 };
 
 export const logout = async (req, res) => {
-  res.send("logout route");
+  res.clearCookie("token");
+  res.status(200).json({ success: true, message: "Logged out successfully" });
 };
