@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+
 import FloatingShape from "./components/FloatingShape";
+import LoadingSpiner from "./components/LoadingSpinner";
 
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
@@ -43,6 +45,9 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
+  if (isCheckingAuth) {
+    return <LoadingSpiner />;
+  }
   return (
     <div
       className="min-h-screen bg-gradient-to-br
