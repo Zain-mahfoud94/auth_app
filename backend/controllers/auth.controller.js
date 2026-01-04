@@ -7,6 +7,7 @@ import {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendForgetPasswordEmail,
+  sendResetSuccessEmail,
 } from "../mailtrap/emails.js";
 
 export const signup = async (req, res) => {
@@ -137,7 +138,6 @@ export const login = async (req, res) => {
       message: "Internal Server error. Please try again later",
     });
   }
-  res.send("login route");
 };
 
 export const logout = async (req, res) => {
@@ -178,7 +178,61 @@ export const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in forgot password", error);
-    res.status(400).json({
+    res.status(500).json({
+      success: false,
+      message: "Internal server error. Please try again later",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+    console.log(token, " ", password);
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiresAt: { $gt: Date.now() },
+    });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token",
+      });
+    }
+    // update password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiresAt = undefined;
+    // save user
+    await user.save();
+    // send reset success email
+    await sendResetSuccessEmail(user.email);
+    return res
+      .status(200)
+      .json({ success: true, message: "User's password updated successfully" });
+  } catch (error) {
+    console.error("Error in reseting password, ", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error. Please try again later",
+    });
+  }
+};
+
+export const checkAuth = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
+    }
+    res.status(200).json({ success: true, user: user });
+  } catch (error) {
+    console.error("Error in check Auth, ", error);
+    res.status(500).json({
       success: false,
       message: "Internal server error. Please try again later",
     });
