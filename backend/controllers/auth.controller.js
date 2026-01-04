@@ -56,47 +56,40 @@ export const signup = async (req, res) => {
 };
 
 export const verifyEmail = async (req, res) => {
-  const { email, token } = req.body;
+  const { code } = req.body;
   try {
-    const userExists = await User.findOne({ email });
-    if (!userExists) {
-      return res.status(400).json({
-        success: false,
-        message: "There is no user with the email you provided",
-      });
-    }
-    if (
-      token !== userExists.verificationToken ||
-      Date.now() > userExists.verificationTokenExpiresAt
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "The verification code you have provided is invalid or expired",
-      });
-    }
-    userExists.isVerified = true;
-    userExists.verificationToken = undefined;
-    userExists.verificationTokenExpiresAt = undefined;
-    // Update the user in the database
-    await userExists.save();
-    // Send the welcome email
-    await sendWelcomeEmail(userExists.email, userExists.name);
+    const user = await User.findOne({
+      verificationToken: code,
+      verificationTokenExpiresAt: { $gt: Date.now() },
+    });
 
-    return res.status(200).json({
+    if (!user) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid or expired verification code",
+        });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpiresAt = undefined;
+    await user.save();
+
+    await sendWelcomeEmail(user.email, user.name);
+
+    res.status(200).json({
       success: true,
       message: "Email verified successfully",
       user: {
-        ...userExists._doc,
+        ...user._doc,
         password: undefined,
       },
     });
   } catch (error) {
-    console.error("Failed to verify the email with error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server error. Please try again later",
-    });
+    console.log("error in verifyEmail ", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
