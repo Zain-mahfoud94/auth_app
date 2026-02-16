@@ -1,16 +1,19 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-
 import FloatingShape from "./components/FloatingShape";
-import LoadingSpiner from "./components/LoadingSpinner";
 
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import EmailVerificationPage from "./pages/EmailVerificationPage";
-import HomePage from "./pages/HomePage";
+import DashboardPage from "./pages/HomePage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+import LoadingSpinner from "./components/LoadingSpinner";
 
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./store/authStore";
 import { useEffect } from "react";
+import HomePage from "./pages/HomePage";
 
 // protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -45,9 +48,8 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
-  if (isCheckingAuth) {
-    return <LoadingSpiner />;
-  }
+  if (isCheckingAuth) return <LoadingSpinner />;
+
   return (
     <div
       className="min-h-screen bg-gradient-to-br
@@ -101,7 +103,23 @@ function App() {
           }
         />
         <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route
+          path="/forgot-password"
+          element={
+            <RedirectAuthenticatedUser>
+              <ForgotPasswordPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
 
+        <Route
+          path="/reset-password/:token"
+          element={
+            <RedirectAuthenticatedUser>
+              <ResetPasswordPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
         {/* catch all routes */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
